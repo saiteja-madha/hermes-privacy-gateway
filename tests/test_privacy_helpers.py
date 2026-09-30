@@ -1,5 +1,9 @@
-import pytest
 from types import SimpleNamespace
+import base64
+import secrets
+import sqlite3
+
+import pytest
 
 pytest.importorskip("presidio_analyzer")
 
@@ -11,6 +15,7 @@ from privacy import (
     select_non_overlapping_results,
     walk_strings,
 )
+from vault import AliasVault
 
 
 def test_walk_strings_preserves_structure():
@@ -51,3 +56,50 @@ def test_overlapping_results_prefer_confidence_then_longer_span():
     ]
     selected = select_non_overlapping_results(results)
     assert [(item.start, item.end) for item in selected] == [(0, 11), (20, 24)]
+
+
+def test_overlapping_ties_use_entity_type_deterministically():
+    results = [
+        SimpleNamespace(start=0, end=5, score=0.70, entity_type="ZETA"),
+        SimpleNamespace(start=0, end=5, score=0.70, entity_type="ALPHA"),
+    ]
+    selected = select_non_overlapping_results(results)
+    assert [item.entity_type for item in selected] == ["ALPHA"]
+
+
+def test_sanitize_preserves_offsets_and_existing_aliases():
+    key = base64.urlsafe_b64encode(secrets.token_bytes(32)).decode()
+    vault = AliasVault(connection=sqlite3.connect(":memory:"), encoded_key=key)
+    existing_alias = vault.alias("PERSON", "Alice Example")
+
+    engine = object.__new__(PrivacyEngine)
+    engine.language = "en"
+    engine.score_threshold = 0.55
+    engine.vault = vault
+
+    class FakeAnalyzer:
+        def analyze(self, *, text, language, score_threshold):
+            alias_start = text.index(existing_alias)
+            email_start = text.index("alice@example.com")
+            return [
+                SimpleNamespace(
+                    start=alias_start,
+                    end=alias_start + len(existing_alias),
+                    score=0.99,
+                    entity_type="PERSON",
+                ),
+                SimpleNamespace(
+                    start=email_start,
+                    end=email_start + len("alice@example.com"),
+                    score=0.90,
+                    entity_type="EMAIL_ADDRESS",
+                ),
+            ]
+
+    engine.analyzer = FakeAnalyzer()
+    source = f"Contact {existing_alias} at alice@example.com."
+    sanitized = engine.sanitize(source)
+
+    assert sanitized.startswith(f"Contact {existing_alias} at ")
+    assert "alice@example.com" not in sanitized
+    assert engine.rehydrate(sanitized) == f"Contact Alice Example at alice@example.com."

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Sequence
 
-from presidio_analyzer import AnalyzerEngine
+from presidio_analyzer import AnalyzerEngine, RecognizerResult
 from presidio_analyzer.nlp_engine import NlpEngineProvider
 
 try:
@@ -81,14 +81,16 @@ def blocked_content_for_key(key: str) -> Any:
     return BLOCKED_REQUEST
 
 
-def select_non_overlapping_results(results: list[Any]) -> list[Any]:
+def select_non_overlapping_results(
+    results: Sequence[RecognizerResult],
+) -> list[RecognizerResult]:
     """Choose a deterministic, highest-confidence set of entity spans.
 
     Presidio can return overlapping recognizer results. Prefer confidence first,
     then the longer span, then the earlier span, and return results in source
     order for callers that need stable output.
     """
-    selected: list[Any] = []
+    selected: list[RecognizerResult] = []
     for result in sorted(
         results,
         key=lambda item: (
@@ -96,8 +98,11 @@ def select_non_overlapping_results(results: list[Any]) -> list[Any]:
             -(int(item.end) - int(item.start)),
             int(item.start),
             int(item.end),
+            str(getattr(item, "entity_type", "")),
         ),
     ):
+        # Presidio normally returns few spans, so this clear O(n²) check keeps
+        # overlap policy explicit and is preferable to a more fragile sweep.
         if any(result.start < other.end and result.end > other.start for other in selected):
             continue
         selected.append(result)
