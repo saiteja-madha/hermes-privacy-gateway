@@ -138,5 +138,6 @@ With an empty `langextract_config_path`, Presidio uses its own documented defaul
 
 - Python source syntax compilation.
 - Unit tests for the encrypted alias vault and helper functions are included.
-- The build environment used to assemble this ZIP could not fetch PyPI packages directly, so the full Presidio runtime smoke test and `hermes plugins doctor` must be run in your Hermes installation after dependencies are admitted.
+- The full Presidio runtime smoke test and `hermes plugins doctor` should be run in the target Hermes installation after dependencies are admitted.
 - The implementation and docs were checked against official Hermes Agent and Data Privacy Stack Presidio documentation on **2026-09-30**. See [docs/SOURCES.md](docs/SOURCES.md).
+- The plugin uses Presidio Analyzer for detection and a small local span-replacement routine for aliases. Presidio Anonymizer is intentionally not a dependency because its current release requires `cryptography<49`, while Hermes's managed runtime pins `cryptography==50.0.1`.

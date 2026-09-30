@@ -8,8 +8,6 @@ from typing import Any
 
 from presidio_analyzer import AnalyzerEngine
 from presidio_analyzer.nlp_engine import NlpEngineProvider
-from presidio_anonymizer import AnonymizerEngine
-from presidio_anonymizer.entities import OperatorConfig
 
 try:
     from .vault import AliasVault, alias_ranges
@@ -83,6 +81,29 @@ def blocked_content_for_key(key: str) -> Any:
     return BLOCKED_REQUEST
 
 
+def select_non_overlapping_results(results: list[Any]) -> list[Any]:
+    """Choose a deterministic, highest-confidence set of entity spans.
+
+    Presidio can return overlapping recognizer results. Prefer confidence first,
+    then the longer span, then the earlier span, and return results in source
+    order for callers that need stable output.
+    """
+    selected: list[Any] = []
+    for result in sorted(
+        results,
+        key=lambda item: (
+            -float(getattr(item, "score", 0.0)),
+            -(int(item.end) - int(item.start)),
+            int(item.start),
+            int(item.end),
+        ),
+    ):
+        if any(result.start < other.end and result.end > other.start for other in selected):
+            continue
+        selected.append(result)
+    return sorted(selected, key=lambda item: (int(item.start), int(item.end)))
+
+
 class PrivacyEngine:
     """Local detector + stable pseudonymizer."""
 
@@ -106,7 +127,6 @@ class PrivacyEngine:
             nlp_engine=nlp_engine,
             supported_languages=[language],
         )
-        self.anonymizer = AnonymizerEngine()
 
         if enable_langextract:
             from presidio_analyzer.predefined_recognizers.third_party.basic_langextract_recognizer import (
@@ -153,26 +173,16 @@ class PrivacyEngine:
         if not results:
             return text
 
-        entity_types = {result.entity_type for result in results}
-        operators = {
-            entity_type: OperatorConfig(
-                "custom",
-                {
-                    "lambda": (
-                        lambda value, entity_type=entity_type: self.vault.alias(
-                            entity_type, value
-                        )
-                    )
-                },
-            )
-            for entity_type in entity_types
-        }
+        results = select_non_overlapping_results(results)
 
-        return self.anonymizer.anonymize(
-            text=text,
-            analyzer_results=results,
-            operators=operators,
-        ).text
+        # Replace from right to left so Presidio's character offsets remain
+        # valid while each detected span is converted to its stable alias.
+        sanitized = text
+        for result in sorted(results, key=lambda item: item.start, reverse=True):
+            value = text[result.start : result.end]
+            alias = self.vault.alias(result.entity_type, value)
+            sanitized = sanitized[: result.start] + alias + sanitized[result.end :]
+        return sanitized
 
     def sanitize_tree(self, value: Any) -> Any:
         return walk_strings(value, self.sanitize)
