@@ -1,0 +1,37 @@
+nlp_engine_name: spacy
+models:
+  - lang_code: en
+    model_name: en_core_web_lg
+
+ner_model_configuration:
+  model_to_presidio_entity_mapping:
+    PER: PERSON
+    PERSON: PERSON
+    NORP: NRP
+    FAC: LOCATION
+    LOC: LOCATION
+    LOCATION: LOCATION
+    GPE: LOCATION
+    ORG: ORGANIZATION
+    ORGANIZATION: ORGANIZATION
+    DATE: DATE_TIME
+    TIME: DATE_TIME
+
+  default_score: 0.85
+  low_confidence_score_multiplier: 0.4
+  low_score_entity_names: []
+
+  # Presidio's stock configuration is conservative about organizations.
+  # This plugin intentionally keeps ORGANIZATION enabled because a private
+  # mail workflow commonly treats employer/customer/vendor names as sensitive.
+  labels_to_ignore:
+    - CARDINAL
+    - EVENT
+    - LANGUAGE
+    - LAW
+    - MONEY
+    - ORDINAL
+    - PERCENT
+    - PRODUCT
+    - QUANTITY
+    - WORK_OF_ART

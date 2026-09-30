@@ -1,0 +1,43 @@
+name: privacy-gateway
+version: 0.1.0
+manifest_version: 2
+api_version: 1
+description: Local PII pseudonymization for Hermes model requests, tool results, and selected tool arguments.
+tags:
+  - privacy
+  - pii
+  - presidio
+  - redaction
+  - pseudonymization
+provides_hooks:
+  - transform_tool_result
+  - transform_llm_output
+requires_env:
+  - name: HERMES_PRIVACY_GATEWAY_KEY
+    description: URL-safe base64 encoding of exactly 32 random bytes. Protects the local alias vault.
+    secret: true
+config_schema:
+  language:
+    type: str
+    default: en
+    description: Language passed to Presidio Analyzer.
+  score_threshold:
+    type: float
+    default: 0.55
+    description: Minimum Presidio confidence score for pseudonymization.
+  enable_langextract:
+    type: bool
+    default: false
+    description: Enable Presidio BasicLangExtractRecognizer for local LLM-assisted PII detection.
+  langextract_config_path:
+    type: str
+    default: ""
+    description: Optional Presidio LangExtract configuration path. Empty uses Presidio defaults.
+  block_non_text_content:
+    type: bool
+    default: true
+    description: Block model requests containing image/audio/file content rather than risk sending unsanitized non-text data.
+  rehydrate_tool_allowlist:
+    type: list
+    default: []
+    description: Exact Hermes tool names allowed to receive locally rehydrated aliases. Empty means no tool receives raw aliases.

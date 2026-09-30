@@ -1,0 +1,28 @@
+# Merge the relevant parts into the config for your privacy-sensitive profile.
+# Do not replace your whole Hermes config with this fragment.
+
+plugins:
+  enabled:
+    - privacy-gateway
+
+  entries:
+    privacy-gateway:
+      settings:
+        language: en
+        score_threshold: 0.55
+        enable_langextract: false
+        langextract_config_path: ""
+        block_non_text_content: true
+
+        # Secure default: resolve no aliases for tools.
+        # Add exact trusted tool names only after reviewing their destination.
+        rehydrate_tool_allowlist: []
+
+# Hermes documents auxiliary LLM calls separately from the main tool loop.
+# This is one documented example slot. Review every enabled auxiliary slot in
+# your Hermes build/profile and route sensitive ones to local inference.
+auxiliary:
+  compression:
+    model: your-local-model
+    base_url: http://127.0.0.1:11434/v1
+    api_key: local-key

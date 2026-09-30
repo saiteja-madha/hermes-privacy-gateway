@@ -1,0 +1,2 @@
+# Generate with: python scripts/generate_key.py
+HERMES_PRIVACY_GATEWAY_KEY=REPLACE_WITH_URLSAFE_BASE64_32_BYTE_KEY
