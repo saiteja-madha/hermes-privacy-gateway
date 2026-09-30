@@ -9,8 +9,7 @@ Use a current first-party Hermes installation. Current Hermes documentation says
 The plugin has these Python dependencies:
 
 - `presidio-analyzer[langextract]>=2.2.364,<2.3`
-- `presidio-anonymizer>=2.2.364,<2.3`
-- `cryptography>=46,<47`
+- `cryptography>=50,<51`
 
 Hermes's current plugin package manager reads a neighboring `pyproject.toml`, asks for dependency consent, and prepares the enabled plugin dependency union before activation.
 
@@ -63,6 +62,19 @@ Install that model **inside the Python environment that actually runs Hermes**:
 ```bash
 python -m spacy download en_core_web_lg
 ```
+
+Hermes's managed runtime does not expose a normal `pip` command. On Hermes
+installations using the managed Python 3.14 environment, install the matching
+spaCy model wheel with Hermes's pinned `uv`:
+
+```bash
+uv pip install --python /path/to/hermes/venv/bin/python \
+  --no-deps \
+  https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl
+```
+
+The model is distributed as a GitHub release asset rather than a normal PyPI
+package, so it is intentionally not listed as a `pyproject.toml` dependency.
 
 Do not assume your system Python is the Hermes runtime. Verify the interpreter used by your Hermes installation/profile first.
 

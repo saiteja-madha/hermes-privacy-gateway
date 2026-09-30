@@ -24,7 +24,6 @@ Verified 2026-09-30.
 - LiteLLM + Presidio masking: https://presidio.dataprivacystack.org/samples/docker/litellm/
 - Samples: https://presidio.dataprivacystack.org/samples/
 - Presidio Analyzer PyPI metadata (2.2.364): https://pypi.org/project/presidio-analyzer/
-- Presidio Anonymizer PyPI metadata (2.2.364): https://pypi.org/project/presidio-anonymizer/
 
 ## Design choices that are ours, not upstream guarantees
 

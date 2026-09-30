@@ -14,6 +14,10 @@ Install the repository's development dependency and run:
 pytest
 ```
 
+When using Hermes's managed runtime, install pytest into the active managed
+environment with Hermes's pinned `uv`, or run the tests in a separate project
+environment with the plugin dependencies available.
+
 The tests cover:
 
 - stable aliases for normalized values
@@ -82,4 +86,6 @@ Required desired result for cloud egress: **no raw fallback path**. The external
 
 ## Package-build validation note
 
-The ZIP was assembled in an environment without direct package-index network resolution, so Presidio could not be installed into that build environment for runtime integration execution. Python source compilation succeeded, and the repo includes the tests/doctor/smoke commands to run in the target Hermes installation.
+The plugin's runtime checks should be run inside the target Hermes installation,
+because Hermes supplies the managed Python environment and profile-scoped vault
+storage.
