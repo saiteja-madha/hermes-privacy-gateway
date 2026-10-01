@@ -12,6 +12,9 @@ tags:
 provides_hooks:
   - transform_tool_result
   - transform_llm_output
+provides_middleware:
+  - llm_request
+  - tool_request
 requires_env:
   - name: HERMES_PRIVACY_GATEWAY_KEY
     description: URL-safe base64 encoding of exactly 32 random bytes. Protects the local alias vault.

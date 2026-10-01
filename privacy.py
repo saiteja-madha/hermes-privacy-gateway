@@ -4,10 +4,15 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Any, Sequence
+from typing import TYPE_CHECKING, Any, Sequence
 
-from presidio_analyzer import AnalyzerEngine, RecognizerResult
-from presidio_analyzer.nlp_engine import NlpEngineProvider
+# Presidio is imported lazily in PrivacyEngine so that importing this module
+# (which plugin registration does for the constants/helpers below) never
+# depends on it. If Presidio is missing, engine creation fails inside the
+# middleware and requests are blocked, instead of register() raising and the
+# plugin silently not registering at all.
+if TYPE_CHECKING:
+    from presidio_analyzer import RecognizerResult
 
 if __package__:
     from .vault import AliasVault, alias_ranges
@@ -185,7 +190,24 @@ class PrivacyEngine:
         self.score_threshold = score_threshold
         self.vault = vault or AliasVault()
 
+        from presidio_analyzer import AnalyzerEngine
+        from presidio_analyzer.nlp_engine import NlpEngineProvider
+
         provider = NlpEngineProvider(conf_file=str(nlp_config_path))
+        # Presidio's spaCy engine silently runs `spacy.cli.download` (an
+        # unpinned pip install into the Hermes runtime) for a missing model.
+        # Refuse instead; the model is a documented manual install.
+        if provider.nlp_configuration.get("nlp_engine_name") == "spacy":
+            import spacy.util
+
+            for model in provider.nlp_configuration.get("models") or []:
+                name = str(model.get("model_name", ""))
+                if not (spacy.util.is_package(name) or Path(name).exists()):
+                    raise RuntimeError(
+                        f"spaCy model {name!r} is not installed; install it as "
+                        "described in docs/INSTALL.md (the plugin will not "
+                        "download it at runtime)"
+                    )
         nlp_engine = provider.create_engine()
         self.analyzer = AnalyzerEngine(
             nlp_engine=nlp_engine,

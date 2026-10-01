@@ -151,3 +151,20 @@ def test_sanitize_preserves_offsets_and_existing_aliases():
     assert sanitized.startswith(f"Contact {existing_alias} at ")
     assert "alice@example.com" not in sanitized
     assert engine.rehydrate(sanitized) == f"Contact Alice Example at alice@example.com."
+
+
+def test_missing_spacy_model_is_refused_not_downloaded(monkeypatch):
+    import spacy.cli
+    import spacy.util
+    from pathlib import Path
+
+    def no_download(*args, **kwargs):
+        raise AssertionError("spaCy model download attempted at runtime")
+
+    monkeypatch.setattr(spacy.util, "is_package", lambda name: False)
+    monkeypatch.setattr(spacy.cli, "download", no_download)
+    key = base64.urlsafe_b64encode(secrets.token_bytes(32)).decode()
+    vault = AliasVault(connection=sqlite3.connect(":memory:"), encoded_key=key)
+
+    with pytest.raises(RuntimeError, match="en_core_web_lg"):
+        PrivacyEngine(Path(__file__).resolve().parent.parent / "nlp.yaml", vault=vault)

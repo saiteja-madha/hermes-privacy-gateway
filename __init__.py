@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import importlib.util
 import logging
 import threading
 from pathlib import Path
@@ -62,7 +63,14 @@ def register(ctx) -> None:
 
     # Constants/helpers are local imports so `hermes plugins doctor` can report
     # dependency issues cleanly after PM preparation, and basic source tests can
-    # import this module without eagerly loading a large NLP stack.
+    # import this module without eagerly loading a large NLP stack. `.privacy`
+    # does not import Presidio at module level, so the middleware below is
+    # always registered; a missing Presidio blocks requests via _get_engine.
+    if importlib.util.find_spec("presidio_analyzer") is None:
+        log.error(
+            "presidio-analyzer is not installed; privacy-gateway will block "
+            "every model request until it is"
+        )
     if __package__:
         from .privacy import (
             BLOCKED_TOOL_RESULT,
