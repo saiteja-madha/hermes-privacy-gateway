@@ -1,15 +1,18 @@
 # Validation record
 
-Build date: 2026-09-30
+Build date: 2026-10-01
 
 Performed in the artifact build environment:
 
 - `python -m py_compile __init__.py privacy.py vault.py scripts/*.py` — passed.
 - YAML parse check for `plugin.yaml`, `nlp.yaml`, and `examples/hermes-config.yaml` — passed.
-- `pytest -q` — 14 tests passed in Hermes's managed Python 3.14 environment.
+- `pytest -q` — 16 tests passed in Hermes's managed Python 3.14 environment.
 - Presidio smoke test — passed with `en_core_web_lg` 3.8.0: synthetic name/email were aliased and restored.
 - `hermes plugins doctor . --ci` — passed: manifest parsing, import, and registration; 2 hooks registered.
 - Live Discord test — passed: synthetic PII was answered and rehydrated correctly.
+- Structured-request regression — passed: provider item IDs, call IDs, types,
+  roles, and tool names remain unchanged while message text and tool payloads
+  are sanitized.
 
 Not performed in the artifact build environment:
 

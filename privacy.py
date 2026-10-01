@@ -9,9 +9,9 @@ from typing import Any, Sequence
 from presidio_analyzer import AnalyzerEngine, RecognizerResult
 from presidio_analyzer.nlp_engine import NlpEngineProvider
 
-try:
+if __package__:
     from .vault import AliasVault, alias_ranges
-except ImportError:  # direct local test/import outside Hermes plugin loader
+else:  # direct local test/import outside Hermes plugin loader
     from vault import AliasVault, alias_ranges
 
 
@@ -46,6 +46,28 @@ _NON_TEXT_KEYS = {
     "audio_url",
 }
 
+# Provider request objects mix model-visible text with protocol metadata. Only
+# these known fields are text/payload boundaries; unknown scalar fields (IDs,
+# enum values, model names, item references, etc.) must remain byte-for-byte
+# unchanged or the provider may reject an otherwise valid request.
+_MODEL_TEXT_KEYS = {
+    "content",
+    "description",
+    "input_text",
+    "instructions",
+    "output_text",
+    "prompt",
+    "refusal",
+    "summary",
+    "text",
+}
+_MODEL_PAYLOAD_KEYS = {
+    "args",
+    "arguments",
+    "input",
+    "output",
+}
+
 
 def walk_strings(value: Any, string_fn) -> Any:
     """Recursively transform strings while preserving container structure."""
@@ -57,6 +79,43 @@ def walk_strings(value: Any, string_fn) -> Any:
         return tuple(walk_strings(item, string_fn) for item in value)
     if isinstance(value, dict):
         return {key: walk_strings(item, string_fn) for key, item in value.items()}
+    return value
+
+
+def walk_model_text(value: Any, string_fn, *, mode: str = "content") -> Any:
+    """Transform model-visible strings without rewriting protocol metadata.
+
+    ``content`` accepts a bare string or a list of content/message items.
+    ``scan`` searches nested protocol containers but preserves unknown scalar
+    fields. ``payload`` sanitizes every string value inside tool arguments or
+    outputs, where arbitrary user-defined object keys are expected.
+    """
+    if isinstance(value, str):
+        return string_fn(value) if mode in {"content", "payload"} else value
+    if isinstance(value, list):
+        child_mode = "payload" if mode == "payload" else mode
+        return [walk_model_text(item, string_fn, mode=child_mode) for item in value]
+    if isinstance(value, tuple):
+        child_mode = "payload" if mode == "payload" else mode
+        return tuple(walk_model_text(item, string_fn, mode=child_mode) for item in value)
+    if isinstance(value, dict):
+        if mode == "payload":
+            return {
+                key: walk_model_text(item, string_fn, mode="payload")
+                for key, item in value.items()
+            }
+
+        transformed = {}
+        for key, item in value.items():
+            normalized_key = str(key).lower()
+            if normalized_key in _MODEL_TEXT_KEYS:
+                item_mode = "content"
+            elif normalized_key in _MODEL_PAYLOAD_KEYS:
+                item_mode = "payload"
+            else:
+                item_mode = "scan"
+            transformed[key] = walk_model_text(item, string_fn, mode=item_mode)
+        return transformed
     return value
 
 
@@ -191,6 +250,10 @@ class PrivacyEngine:
 
     def sanitize_tree(self, value: Any) -> Any:
         return walk_strings(value, self.sanitize)
+
+    def sanitize_model_content(self, value: Any) -> Any:
+        """Sanitize provider text while preserving protocol IDs and enums."""
+        return walk_model_text(value, self.sanitize)
 
     def rehydrate(self, text: str) -> str:
         return self.vault.rehydrate(text)

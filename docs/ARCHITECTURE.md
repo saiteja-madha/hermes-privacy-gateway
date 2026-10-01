@@ -29,6 +29,18 @@ The plugin sanitizes common provider text roots when present:
 - `instructions`
 - `prompt`
 
+Those roots contain both model-visible text and provider protocol metadata.
+The traversal sanitizes known text fields (`content`, `text`, `input_text`,
+`output_text`, prompts/instructions) and arbitrary strings inside tool
+arguments/outputs. It preserves structural fields such as `id`, `call_id`,
+`type`, `role`, `name`, and unknown scalar metadata exactly. This is required
+for Responses-style APIs, whose item IDs accept only a restricted character
+set and must never be replaced with bracketed PII aliases.
+
+If a provider request exposes none of the recognized top-level roots, the
+plugin replaces it with a blocked request instead of guessing which unknown
+strings are content versus protocol identifiers.
+
 If normal sanitization fails inside the callback, those roots are replaced with a block marker. This is best-effort fail-closed behavior **inside the callback only**; Hermes's middleware framework itself is documented as fail-open, so the external egress layer remains required for a hard security boundary.
 
 ## Tool results
