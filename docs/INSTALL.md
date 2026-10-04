@@ -75,6 +75,8 @@ uv pip install --python /path/to/hermes/venv/bin/python \
 
 The model is distributed as a GitHub release asset rather than a normal PyPI
 package, so it is intentionally not listed as a `pyproject.toml` dependency.
+If the model is missing, the plugin refuses to initialize its engine (model
+requests are blocked) instead of letting Presidio download it at runtime.
 
 Do not assume your system Python is the Hermes runtime. Verify the interpreter used by your Hermes installation/profile first.
 

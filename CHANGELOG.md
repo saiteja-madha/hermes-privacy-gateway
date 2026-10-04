@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- Register the middleware even when `presidio-analyzer` is not installed: a
+  missing dependency now blocks model requests (and logs an error at startup)
+  instead of making `register()` raise, which left no middleware installed and
+  let plaintext reach the provider.
+- Refuse to initialize when the configured spaCy model is not installed
+  instead of letting Presidio pip-install it from GitHub at runtime.
+- Declare `provides_middleware: [llm_request, tool_request]` in `plugin.yaml`.
+
 ## 0.1.1 - 2026-10-01
 
 - Preserve provider protocol metadata such as Responses API item IDs, call IDs,
