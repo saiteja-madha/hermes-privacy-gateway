@@ -26,6 +26,8 @@ The tests cover:
 - wrong-key refusal
 - alias rehydration
 - recursive string transformation helpers
+- provider request traversal that preserves IDs/enums while sanitizing text
+- tool argument/output payload sanitization
 - common non-text payload detection
 - narrow structured-secret removal
 

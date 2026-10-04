@@ -35,9 +35,9 @@ def _get_engine(ctx):
             raise RuntimeError("privacy engine initialization previously failed") from _ENGINE_ERROR
 
         try:
-            try:
+            if __package__:
                 from .privacy import PrivacyEngine
-            except ImportError:  # direct development import outside Hermes package loader
+            else:  # direct development import outside Hermes package loader
                 from privacy import PrivacyEngine
 
             _ENGINE = PrivacyEngine(
@@ -63,13 +63,13 @@ def register(ctx) -> None:
     # Constants/helpers are local imports so `hermes plugins doctor` can report
     # dependency issues cleanly after PM preparation, and basic source tests can
     # import this module without eagerly loading a large NLP stack.
-    try:
+    if __package__:
         from .privacy import (
             BLOCKED_TOOL_RESULT,
             blocked_content_for_key,
             contains_non_text_model_content,
         )
-    except ImportError:  # direct development import outside Hermes package loader
+    else:  # direct development import outside Hermes package loader
         from privacy import (
             BLOCKED_TOOL_RESULT,
             blocked_content_for_key,
@@ -93,16 +93,13 @@ def register(ctx) -> None:
                 if block_non_text and contains_non_text_model_content(value):
                     request[key] = blocked_content_for_key(key)
                 else:
-                    request[key] = engine.sanitize_tree(value)
+                    request[key] = engine.sanitize_model_content(value)
 
-            # Provider adapters normally expose one of the documented/common roots
-            # above. For an unfamiliar request shape, sanitize every string rather
-            # than silently passing an unknown payload through untouched.
+            # An unfamiliar request shape cannot be sanitized safely: walking every
+            # string can corrupt protocol IDs, while preserving unknown strings can
+            # leak PII. Block it instead.
             if not found_content_root:
-                if block_non_text and contains_non_text_model_content(request):
-                    request = {"messages": [{"role": "user", "content": "[PRIVACY_GATEWAY_BLOCKED_REQUEST]"}]}
-                else:
-                    request = engine.sanitize_tree(request)
+                request = {"messages": [{"role": "user", "content": "[PRIVACY_GATEWAY_BLOCKED_REQUEST]"}]}
 
         except Exception:
             # Best effort to fail closed inside our callback. Hermes itself documents

@@ -13,6 +13,7 @@ from privacy import (
     blocked_content_for_key,
     contains_non_text_model_content,
     select_non_overlapping_results,
+    walk_model_text,
     walk_strings,
 )
 from vault import AliasVault
@@ -22,6 +23,53 @@ def test_walk_strings_preserves_structure():
     value = {"a": ["john@example.com", {"b": "John"}], "n": 4}
     out = walk_strings(value, lambda s: f"<{s}>")
     assert out == {"a": ["<john@example.com>", {"b": "<John>"}], "n": 4}
+
+
+def test_model_text_walk_preserves_protocol_ids_and_sanitizes_content():
+    value = [
+        {
+            "type": "message",
+            "id": "person_911469234FCA8DD79AE3CE8306D7ED40",
+            "role": "user",
+            "content": [
+                {"type": "input_text", "text": "Alice Example"},
+            ],
+        },
+        {
+            "type": "function_call",
+            "id": "fc_123",
+            "call_id": "call_456",
+            "name": "lookup_customer",
+            "arguments": {"customer_id": "Alice Example"},
+        },
+    ]
+
+    out = walk_model_text(value, lambda text: f"<{text}>")
+
+    assert out[0]["id"] == value[0]["id"]
+    assert out[0]["type"] == "message"
+    assert out[0]["role"] == "user"
+    assert out[0]["content"][0]["type"] == "input_text"
+    assert out[0]["content"][0]["text"] == "<Alice Example>"
+    assert out[1]["id"] == "fc_123"
+    assert out[1]["call_id"] == "call_456"
+    assert out[1]["name"] == "lookup_customer"
+    assert out[1]["arguments"]["customer_id"] == "<Alice Example>"
+
+
+def test_model_text_walk_preserves_unknown_scalar_metadata():
+    value = {
+        "metadata": {
+            "opaque_reference": "Alice Example",
+            "ids": ["Alice Example", "Bob Example"],
+        },
+        "content": "Alice Example",
+    }
+
+    out = walk_model_text(value, lambda text: f"<{text}>")
+
+    assert out["metadata"] == value["metadata"]
+    assert out["content"] == "<Alice Example>"
 
 
 def test_detects_image_payload():
