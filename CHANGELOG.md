@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Declare Hermes `>=0.20.4`, the first release providing the plugin storage API
+  used by the encrypted alias vault.
 - Register the middleware even when `presidio-analyzer` is not installed: a
   missing dependency now blocks model requests (and logs an error at startup)
   instead of making `register()` raise, which left no middleware installed and

@@ -2,6 +2,7 @@ name: privacy-gateway
 version: 0.1.1
 manifest_version: 2
 api_version: 1
+requires_hermes: ">=0.20.4"
 description: Local PII pseudonymization for Hermes model requests, tool results, and selected tool arguments.
 tags:
   - privacy
